@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Aircraft Scheduler</title>
 <style>
-/* ─── BASE STYLES ─── */
 body { font-family: Arial; background: #0d1117; color: white; padding: 20px; transition: background 0.5s, color 0.5s; }
 h1 { text-align: center; }
 #creator { color: #38bdf8; font-size: 14px; text-align: center; margin-top: 5px; animation: bounce 2s infinite; }
@@ -28,7 +27,7 @@ button { padding: 6px; margin: 5px; border: none; cursor: pointer; border-radius
 #addAircraftBtn { background: #16a34a; color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
 #activityFilterSelect { margin-left: 10px; padding:3px; }
 
-/* ─── LIGHT MODE ─── */
+/* LIGHT MODE */
 body.light-mode {
   background: #f4f4f4;
   color: black;
@@ -36,46 +35,37 @@ body.light-mode {
 body.light-mode th { background: #ddd; color: black; }
 body.light-mode .due-soon { color: black; }
 body.light-mode .overdue { color: white; }
-body.light-mode button.history-btn { background: #8b5cf6; color: white; }
-body.light-mode #addAircraftBtn { background: #16a34a; color: white; }
-body.light-mode .complete-btn { background: #1f6feb; }
-body.light-mode .edit-btn { background: #f59e0b; }
-body.light-mode .save-btn { background: #16a34a; }
-body.light-mode .cancel-btn { background: #ef4444; }
-body.light-mode .delete-btn { background: #dc2626; }
 
-/* ─── TOGGLE SWITCH ─── */
-.switch {
-  position: absolute;
-  top: 20px; left: 20px;
-  display: inline-block; width: 60px; height: 34px;
-}
+/* TOGGLE SWITCH */
+.switch { position: relative; display: inline-block; width: 60px; height: 34px; }
 .switch input { display:none; }
-.slider {
-  position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0;
-  background-color: #ccc; transition: .4s; border-radius: 34px;
-}
-.slider:before {
-  position: absolute; content: ""; height: 26px; width: 26px;
-  left: 4px; bottom: 4px; background-color: white;
-  transition: .4s; border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
+.slider { position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 input:checked + .slider { background-color: #38bdf8; }
 input:checked + .slider:before { transform: translateX(26px); }
 </style>
 </head>
 <body>
 
-<!-- ─── LIGHT/DARK TOGGLE ─── -->
-<label class="switch">
-  <input type="checkbox" id="modeToggle">
-  <span class="slider"></span>
-</label>
+<!-- PASSWORD MODAL -->
+<div id="passwordModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:9999;flex-direction:column;color:white;">
+  <h2>Enter Password</h2>
+  <input type="password" id="passwordInput" placeholder="Password" style="padding:8px; font-size:16px; border-radius:4px; border:none; margin-bottom:10px;">
+  <button id="passwordBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#38bdf8; color:white;">Submit</button>
+  <p id="passwordMsg" style="color:red; margin-top:8px;"></p>
+</div>
+
+<!-- LIGHT/DARK TOGGLE -->
+<div style="position:absolute; top:20px; left:20px; display:flex; align-items:center; gap:8px;">
+  <label id="modeLabel" style="font-weight:bold;">Dark</label>
+  <label class="switch">
+    <input type="checkbox" id="modeToggle">
+    <span class="slider"></span>
+  </label>
+</div>
 
 <h1>Automated Aircraft Scheduler</h1>
 <p id="creator">Made By Capt Fahad ✈ | Powered By AI 💻</p>
-
 <button id="toggleViewBtn" onclick="toggleView()" class="history-btn">History Log</button>
 
 <div id="liveSection" style="display:block">
@@ -142,10 +132,39 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let aircraftList = [], historyList = [];
-let filterAircraftLive = "", filterAircraftHistory = null, editId = null;
-const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+let aircraftList=[], historyList=[];
+let filterAircraftLive="", filterAircraftHistory=null, editId=null;
+const months=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
+// PASSWORD
+const correctPassword = "sadaf123"; 
+const passwordModal = document.getElementById("passwordModal");
+const passwordInput = document.getElementById("passwordInput");
+const passwordBtn = document.getElementById("passwordBtn");
+const passwordMsg = document.getElementById("passwordMsg");
+
+passwordBtn.addEventListener("click", ()=>{
+  if(passwordInput.value === correctPassword){
+    passwordModal.style.display="none"; 
+    loadData();
+  } else { passwordMsg.textContent="Incorrect password!"; }
+});
+passwordInput.addEventListener("keypress", (e)=>{ if(e.key==="Enter") passwordBtn.click(); });
+
+// LIGHT/DARK MODE
+const modeLabel=document.getElementById("modeLabel");
+const modeToggle=document.getElementById("modeToggle");
+const savedMode=localStorage.getItem("mode")||"dark";
+
+if(savedMode==="light"){ document.body.classList.add("light-mode"); modeToggle.checked=true; modeLabel.textContent="Light"; modeLabel.style.color="black"; }
+else{ document.body.classList.remove("light-mode"); modeToggle.checked=false; modeLabel.textContent="Dark"; modeLabel.style.color="white"; }
+
+modeToggle.addEventListener("change", ()=>{
+  if(modeToggle.checked){ document.body.classList.add("light-mode"); localStorage.setItem("mode","light"); modeLabel.textContent="Light"; modeLabel.style.color="black"; }
+  else{ document.body.classList.remove("light-mode"); localStorage.setItem("mode","dark"); modeLabel.textContent="Dark"; modeLabel.style.color="white"; }
+});
+
+// ─── FUNCTIONS ───
 function formatDate(date){ if(!date) return ""; const d=new Date(date); return `${String(d.getDate()).padStart(2,'0')}/${months[d.getMonth()]}/${d.getFullYear()}`; }
 function getDiffDays(date){ if(!date) return 999; const today=new Date(), last=new Date(date); const next=new Date(last); next.setDate(last.getDate()+30); return Math.ceil((next-today)/(1000*60*60*24)); }
 function calculateStatus(date){ const diff=getDiffDays(date); if(diff<0) return {text:"OVERDUE", class:"overdue"}; if(diff<=7) return {text:"DUE SOON", class:"due-soon"}; return {text:"", class:""}; }
@@ -164,12 +183,7 @@ function render(){
       ${createCell(a.wash,a.id,"Washing",isEditing)}
       ${createCell(a.deep,a.id,"Deep Cleaning",isEditing)}
       ${createCell(a.fumi,a.id,"Fumigation",isEditing)}
-      <td>
-        ${isEditing?`<button class="save-btn" onclick="saveEdit('${a.id}')">Save</button>
-        <button class="cancel-btn" onclick="cancelEdit()">Cancel</button>`:
-        `<button class="edit-btn" onclick="editRow('${a.id}')">Edit</button>
-        <button class="delete-btn" onclick="deleteRow('${a.id}')">Delete</button>`}
-      </td>
+      <td>${isEditing?`<button class="save-btn" onclick="saveEdit('${a.id}')">Save</button><button class="cancel-btn" onclick="cancelEdit()">Cancel</button>`:`<button class="edit-btn" onclick="editRow('${a.id}')">Edit</button><button class="delete-btn" onclick="deleteRow('${a.id}')">Delete</button>`}</td>
     </tr>`;
   });
   populateFilterDropdown();
@@ -180,65 +194,40 @@ function populateFilterDropdown(){
   const select=document.getElementById("filterAircraftSelect");
   const names=[...new Set(aircraftList.map(a=>a.name))];
   select.querySelectorAll('option:not([value=""])').forEach(o=>o.remove());
-  names.forEach(name=>{
-    const opt=document.createElement("option");
-    opt.value=name; opt.textContent=name;
-    if(name===filterAircraftLive) opt.selected=true;
-    select.appendChild(opt);
-  });
+  names.forEach(name=>{ const opt=document.createElement("option"); opt.value=name; opt.textContent=name; if(name===filterAircraftLive) opt.selected=true; select.appendChild(opt); });
 }
 
-// HISTORY RENDER
 function renderHistory(){
   const historyBody=document.getElementById("historyBody");
   const aircraftButtonsDiv=document.getElementById("aircraftButtons");
   const activityFilter=document.getElementById("activityFilterSelect").value;
   historyBody.innerHTML=""; aircraftButtonsDiv.innerHTML="";
-  const allBtn=document.createElement("span"); allBtn.textContent="All Aircraft"; allBtn.className="aircraft-filter";
-  allBtn.onclick=()=>{ filterAircraftHistory=null; renderHistory(); };
-  aircraftButtonsDiv.appendChild(allBtn);
+  const allBtn=document.createElement("span"); allBtn.textContent="All Aircraft"; allBtn.className="aircraft-filter"; allBtn.onclick=()=>{ filterAircraftHistory=null; renderHistory(); }; aircraftButtonsDiv.appendChild(allBtn);
   const aircraftNames=[...new Set(historyList.map(h=>h.aircraft))];
-  aircraftNames.forEach(name=>{
-    const btn=document.createElement("span"); btn.textContent=name; btn.className="aircraft-filter";
-    btn.onclick=()=>{ filterAircraftHistory=filterAircraftHistory===name?null:name; renderHistory(); };
-    aircraftButtonsDiv.appendChild(btn);
-  });
+  aircraftNames.forEach(name=>{ const btn=document.createElement("span"); btn.textContent=name; btn.className="aircraft-filter"; btn.onclick=()=>{ filterAircraftHistory=filterAircraftHistory===name?null:name; renderHistory(); }; aircraftButtonsDiv.appendChild(btn); });
   let displayList=historyList;
   if(filterAircraftHistory) displayList=displayList.filter(h=>h.aircraft===filterAircraftHistory);
   if(activityFilter) displayList=displayList.filter(h=>h.type===activityFilter);
-  displayList.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(item=>{
-    historyBody.innerHTML+=`<tr>
-      <td>${item.aircraft}</td>
-      <td>${item.type}</td>
-      <td>${formatDate(item.date)}</td>
-      <td><span style="cursor:pointer;color:red;font-weight:bold;" onclick="deleteHistory('${item.id}')">✖</span></td>
-    </tr>`;
-  });
+  displayList.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(item=>{ historyBody.innerHTML+=`<tr><td>${item.aircraft}</td><td>${item.type}</td><td>${formatDate(item.date)}</td><td><span style="cursor:pointer;color:red;font-weight:bold;" onclick="deleteHistory('${item.id}')">✖</span></td></tr>`; });
 }
 
-// FIRESTORE DATA
 async function loadData(){
   const aircraftSnap=await getDocs(collection(db,"aircraft"));
   aircraftList=aircraftSnap.docs.map(d=>({id:d.id, ...d.data()}));
-
+  
   onSnapshot(collection(db,"history"),snapshot=>{
     historyList=snapshot.docs.map(d=>{
-      const data=d.data();
-      let dateVal = data.date;
+      const data=d.data(); let dateVal=data.date;
       if(dateVal && dateVal.toDate) dateVal=dateVal.toDate().toISOString().split('T')[0];
       return {id:d.id, aircraft:data.aircraft, type:data.type, date:dateVal};
     });
     renderHistory();
   });
-
+  
   render();
 }
 
-async function saveAircraft(a){
-  if(a.id) await updateDoc(doc(db,"aircraft",a.id),{name:a.name,wash:a.wash,deep:a.deep,fumi:a.fumi});
-  else { const ref=await addDoc(collection(db,"aircraft"),{name:a.name,wash:a.wash,deep:a.deep,fumi:a.fumi}); a.id=ref.id; }
-}
-
+async function saveAircraft(a){ if(a.id) await updateDoc(doc(db,"aircraft",a.id),{name:a.name,wash:a.wash,deep:a.deep,fumi:a.fumi}); else { const ref=await addDoc(collection(db,"aircraft"),{name:a.name,wash:a.wash,deep:a.deep,fumi:a.fumi}); a.id=ref.id; } }
 async function addHistory(a){ await addDoc(collection(db,"history"),{aircraft:a.aircraft,type:a.type,date:a.date}); }
 
 window.addAircraft=async function(){
@@ -248,8 +237,7 @@ window.addAircraft=async function(){
 }
 
 window.markComplete=async function(id,type){
-  const today=new Date().toISOString().split('T')[0];
-  const a=aircraftList.find(x=>x.id===id);
+  const today=new Date().toISOString().split('T')[0]; const a=aircraftList.find(x=>x.id===id);
   await addHistory({aircraft:a.name,type,date:today});
   if(type==="Washing") a.wash=today; if(type==="Deep Cleaning") a.deep=today; if(type==="Fumigation") a.fumi=today;
   await saveAircraft(a); await loadData();
@@ -257,42 +245,15 @@ window.markComplete=async function(id,type){
 
 window.editRow=function(id){ editId=id; render(); }
 window.cancelEdit=function(){ editId=null; render(); }
-window.saveEdit=async function(id){
-  const a=aircraftList.find(x=>x.id===id);
-  a.wash=document.getElementById(`washing-input-${id}`).value;
-  a.deep=document.getElementById(`deep-cleaning-input-${id}`).value;
-  a.fumi=document.getElementById(`fumigation-input-${id}`).value;
-  editId=null; await saveAircraft(a); await loadData();
-}
+window.saveEdit=async function(id){ const a=aircraftList.find(x=>x.id===id); a.wash=document.getElementById(`washing-input-${id}`).value; a.deep=document.getElementById(`deep-cleaning-input-${id}`).value; a.fumi=document.getElementById(`fumigation-input-${id}`).value; editId=null; await saveAircraft(a); await loadData(); }
 
 window.deleteRow=async function(id){ if(confirm("Are you sure?")){ await deleteDoc(doc(db,"aircraft",id)); await loadData(); } }
 window.deleteHistory=async function(id){ if(confirm("Delete this history entry?")) await deleteDoc(doc(db,"history",id)); }
 
 window.applyFilter=function(){ filterAircraftLive=document.getElementById("filterAircraftSelect").value; render(); }
 
-window.toggleView=function(){
-  const live=document.getElementById("liveSection");
-  const history=document.getElementById("historySection");
-  const btn=document.getElementById("toggleViewBtn");
-  if(live.style.display==="none" || live.style.display===""){
-    live.style.display="block"; history.style.display="none"; btn.textContent="History Log";
-  } else{
-    live.style.display="none"; history.style.display="block"; btn.textContent="Live Tracker";
-    renderHistory();
-  }
-}
+window.toggleView=function(){ const live=document.getElementById("liveSection"); const history=document.getElementById("historySection"); const btn=document.getElementById("toggleViewBtn"); if(live.style.display==="none" || live.style.display===""){ live.style.display="block"; history.style.display="none"; btn.textContent="History Log"; } else{ live.style.display="none"; history.style.display="block"; btn.textContent="Live Tracker"; renderHistory(); } }
 
-// ─── LIGHT/DARK MODE SCRIPT ───
-const modeToggle = document.getElementById("modeToggle");
-const savedMode = localStorage.getItem("mode") || "dark";
-if(savedMode==="light"){ document.body.classList.add("light-mode"); modeToggle.checked = true; }
-else { document.body.classList.remove("light-mode"); modeToggle.checked = false; }
-modeToggle.addEventListener("change", ()=>{
-  if(modeToggle.checked){ document.body.classList.add("light-mode"); localStorage.setItem("mode","light"); }
-  else { document.body.classList.remove("light-mode"); localStorage.setItem("mode","dark"); }
-});
-
-loadData();
 </script>
 </body>
 </html>
