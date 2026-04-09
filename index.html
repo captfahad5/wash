@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <title>Aircraft Scheduler</title>
 <style>
-body { font-family: Arial; background: #0d1117; color: white; padding: 20px; }
+/* ─── BASE STYLES ─── */
+body { font-family: Arial; background: #0d1117; color: white; padding: 20px; transition: background 0.5s, color 0.5s; }
 h1 { text-align: center; }
 #creator { color: #38bdf8; font-size: 14px; text-align: center; margin-top: 5px; animation: bounce 2s infinite; }
 @keyframes bounce { 0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);} }
@@ -26,9 +27,51 @@ button { padding: 6px; margin: 5px; border: none; cursor: pointer; border-radius
 .history-btn { position: absolute; top: 20px; right: 20px; background: #8b5cf6; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; }
 #addAircraftBtn { background: #16a34a; color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
 #activityFilterSelect { margin-left: 10px; padding:3px; }
+
+/* ─── LIGHT MODE ─── */
+body.light-mode {
+  background: #f4f4f4;
+  color: black;
+}
+body.light-mode th { background: #ddd; color: black; }
+body.light-mode .due-soon { color: black; }
+body.light-mode .overdue { color: white; }
+body.light-mode button.history-btn { background: #8b5cf6; color: white; }
+body.light-mode #addAircraftBtn { background: #16a34a; color: white; }
+body.light-mode .complete-btn { background: #1f6feb; }
+body.light-mode .edit-btn { background: #f59e0b; }
+body.light-mode .save-btn { background: #16a34a; }
+body.light-mode .cancel-btn { background: #ef4444; }
+body.light-mode .delete-btn { background: #dc2626; }
+
+/* ─── TOGGLE SWITCH ─── */
+.switch {
+  position: absolute;
+  top: 20px; left: 20px;
+  display: inline-block; width: 60px; height: 34px;
+}
+.switch input { display:none; }
+.slider {
+  position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0;
+  background-color: #ccc; transition: .4s; border-radius: 34px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 26px; width: 26px;
+  left: 4px; bottom: 4px; background-color: white;
+  transition: .4s; border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+input:checked + .slider { background-color: #38bdf8; }
+input:checked + .slider:before { transform: translateX(26px); }
 </style>
 </head>
 <body>
+
+<!-- ─── LIGHT/DARK TOGGLE ─── -->
+<label class="switch">
+  <input type="checkbox" id="modeToggle">
+  <span class="slider"></span>
+</label>
 
 <h1>Automated Aircraft Scheduler</h1>
 <p id="creator">Made By Capt Fahad ✈ | Powered By AI 💻</p>
@@ -103,41 +146,10 @@ let aircraftList = [], historyList = [];
 let filterAircraftLive = "", filterAircraftHistory = null, editId = null;
 const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
-function formatDate(date){
-  if(!date) return "";
-  const d=new Date(date);
-  return `${String(d.getDate()).padStart(2,'0')}/${months[d.getMonth()]}/${d.getFullYear()}`;
-}
-
-function getDiffDays(date){
-  if(!date) return 999;
-  const today=new Date(), last=new Date(date);
-  const next=new Date(last); next.setDate(last.getDate()+30);
-  return Math.ceil((next-today)/(1000*60*60*24));
-}
-
-function calculateStatus(date){
-  const diff=getDiffDays(date);
-  if(diff<0) return {text:"OVERDUE", class:"overdue"};
-  if(diff<=7) return {text:"DUE SOON", class:"due-soon"};
-  return {text:"", class:""};
-}
-
-function createCell(date,id,type,editMode){
-  const status=calculateStatus(date);
-  const diff=getDiffDays(date);
-  const last=new Date(date), next=new Date(last); next.setDate(last.getDate()+30);
-  const inputId=`${type.toLowerCase().replace(" ","-")}-input-${id}`;
-  if(editMode) return `<td><input type="date" id="${inputId}" value="${date}"></td>`;
-  return `<td class="${status.class}">
-      Last: ${formatDate(date)}<br>
-      Due: ${formatDate(next)}<br>
-      Days Left: ${diff}<br>
-      ${status.text}<br>
-      <button class="complete-btn" onclick="markComplete('${id}','${type}')">Complete</button>
-  </td>`;
-}
-
+function formatDate(date){ if(!date) return ""; const d=new Date(date); return `${String(d.getDate()).padStart(2,'0')}/${months[d.getMonth()]}/${d.getFullYear()}`; }
+function getDiffDays(date){ if(!date) return 999; const today=new Date(), last=new Date(date); const next=new Date(last); next.setDate(last.getDate()+30); return Math.ceil((next-today)/(1000*60*60*24)); }
+function calculateStatus(date){ const diff=getDiffDays(date); if(diff<0) return {text:"OVERDUE", class:"overdue"}; if(diff<=7) return {text:"DUE SOON", class:"due-soon"}; return {text:"", class:""}; }
+function createCell(date,id,type,editMode){ const status=calculateStatus(date); const diff=getDiffDays(date); const last=new Date(date), next=new Date(last); next.setDate(last.getDate()+30); const inputId=`${type.toLowerCase().replace(" ","-")}-input-${id}`; if(editMode) return `<td><input type="date" id="${inputId}" value="${date}"></td>`; return `<td class="${status.class}">Last: ${formatDate(date)}<br>Due: ${formatDate(next)}<br>Days Left: ${diff}<br>${status.text}<br><button class="complete-btn" onclick="markComplete('${id}','${type}')">Complete</button></td>`; }
 function getPriority(a){ return Math.min(getDiffDays(a.wash), getDiffDays(a.deep), getDiffDays(a.fumi)); }
 
 function render(){
@@ -147,19 +159,18 @@ function render(){
   let displayList = filterAircraftLive ? aircraftList.filter(a=>a.name===filterAircraftLive) : aircraftList;
   displayList.forEach(a=>{
     const isEditing=editId===a.id;
-    table.innerHTML+=`
-      <tr>
-        <td>${a.name}</td>
-        ${createCell(a.wash,a.id,"Washing",isEditing)}
-        ${createCell(a.deep,a.id,"Deep Cleaning",isEditing)}
-        ${createCell(a.fumi,a.id,"Fumigation",isEditing)}
-        <td>
-          ${isEditing?`<button class="save-btn" onclick="saveEdit('${a.id}')">Save</button>
-          <button class="cancel-btn" onclick="cancelEdit()">Cancel</button>`:
-          `<button class="edit-btn" onclick="editRow('${a.id}')">Edit</button>
-          <button class="delete-btn" onclick="deleteRow('${a.id}')">Delete</button>`}
-        </td>
-      </tr>`;
+    table.innerHTML+=`<tr>
+      <td>${a.name}</td>
+      ${createCell(a.wash,a.id,"Washing",isEditing)}
+      ${createCell(a.deep,a.id,"Deep Cleaning",isEditing)}
+      ${createCell(a.fumi,a.id,"Fumigation",isEditing)}
+      <td>
+        ${isEditing?`<button class="save-btn" onclick="saveEdit('${a.id}')">Save</button>
+        <button class="cancel-btn" onclick="cancelEdit()">Cancel</button>`:
+        `<button class="edit-btn" onclick="editRow('${a.id}')">Edit</button>
+        <button class="delete-btn" onclick="deleteRow('${a.id}')">Delete</button>`}
+      </td>
+    </tr>`;
   });
   populateFilterDropdown();
   renderHistory();
@@ -177,20 +188,18 @@ function populateFilterDropdown(){
   });
 }
 
-// 🔹 HISTORY RENDER 🔹
+// HISTORY RENDER
 function renderHistory(){
   const historyBody=document.getElementById("historyBody");
   const aircraftButtonsDiv=document.getElementById("aircraftButtons");
   const activityFilter=document.getElementById("activityFilterSelect").value;
   historyBody.innerHTML=""; aircraftButtonsDiv.innerHTML="";
-  const allBtn=document.createElement("span");
-  allBtn.textContent="All Aircraft"; allBtn.className="aircraft-filter";
+  const allBtn=document.createElement("span"); allBtn.textContent="All Aircraft"; allBtn.className="aircraft-filter";
   allBtn.onclick=()=>{ filterAircraftHistory=null; renderHistory(); };
   aircraftButtonsDiv.appendChild(allBtn);
   const aircraftNames=[...new Set(historyList.map(h=>h.aircraft))];
   aircraftNames.forEach(name=>{
-    const btn=document.createElement("span");
-    btn.textContent=name; btn.className="aircraft-filter";
+    const btn=document.createElement("span"); btn.textContent=name; btn.className="aircraft-filter";
     btn.onclick=()=>{ filterAircraftHistory=filterAircraftHistory===name?null:name; renderHistory(); };
     aircraftButtonsDiv.appendChild(btn);
   });
@@ -207,7 +216,7 @@ function renderHistory(){
   });
 }
 
-// 🔹 FIRESTORE DATA 🔹
+// FIRESTORE DATA
 async function loadData(){
   const aircraftSnap=await getDocs(collection(db,"aircraft"));
   aircraftList=aircraftSnap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -272,6 +281,16 @@ window.toggleView=function(){
     renderHistory();
   }
 }
+
+// ─── LIGHT/DARK MODE SCRIPT ───
+const modeToggle = document.getElementById("modeToggle");
+const savedMode = localStorage.getItem("mode") || "dark";
+if(savedMode==="light"){ document.body.classList.add("light-mode"); modeToggle.checked = true; }
+else { document.body.classList.remove("light-mode"); modeToggle.checked = false; }
+modeToggle.addEventListener("change", ()=>{
+  if(modeToggle.checked){ document.body.classList.add("light-mode"); localStorage.setItem("mode","light"); }
+  else { document.body.classList.remove("light-mode"); localStorage.setItem("mode","dark"); }
+});
 
 loadData();
 </script>
